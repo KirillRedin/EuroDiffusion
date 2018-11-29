@@ -93,24 +93,17 @@ class EuroDiffusion:
             for country in self.countries:
                 country.apply_changes()
 
-    def countries_are_connected(self):
-        for country in self.countries:
-            if not self.is_connected(country):
-                return False
-            else:
-                return True
+    def countries_are_connected(self, country, country_list):
+        country_list = country_list
+        if country in country_list:
+            return
+        country_list.append(country)
 
-    def is_connected(self, country):
-        coords = [[-1, 0], [0, -1], [1, 0], [0, 1]]
+        for neighbor in country.neighbors:
+            self.countries_are_connected(neighbor, country_list)
 
-        for city in country.cities:
-            for coord in coords:
-                try:
-                    if self.grid[city.x + coord[0]][city.y + coord[1]] != 0:
-                        if self.grid[city.x + coord[0]][city.y + coord[1]].country_name != country.name:
-                            return True
-                except IndexError:
-                    continue
+        if len(country_list) == len(self.countries):
+            return True
 
         return False
 
@@ -140,10 +133,11 @@ class EuroDiffusion:
                     return
 
         for country in self.countries:
+            country.fill_neighbors(self.grid, self.countries)
             for city in country.cities:
                 city.fill_neighbors(self.grid)
 
-        if not self.countries_are_connected():
+        if not self.countries_are_connected(self.countries[0], []):
             self.errors.append({'case': self.cases_count, 'text': 'COUNTRIES ARE NOT CONNECTED'})
             self.case_is_correct = False
 
