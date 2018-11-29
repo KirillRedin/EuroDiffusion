@@ -6,70 +6,85 @@ from city import City
 class EuroDiffusion:
     def __init__(self):
         self.grid = []
-        self.transport_grid = []
         self.countries = []
+        self.errors = []
         self.cases_count = 0
         self.countries_amount = 0
         self.days = 0
-        self.largest_x, self.largest_y = 0, 0
+        self.case_is_correct = True
+        self.grid_length, self.grid_height = 0, 0
 
     def parse(self, name):
         file = open(name, 'r')
         country_number = 0
+        case_is_started = False
 
         for line in file:
-
-            if country_number < self.countries_amount:
+            if case_is_started:
                 country_number += 1
-                args = line.split()
 
-                if len(args) != 5:
-                    print('ARGS AMOUNT ERROR')
-                else:
-                    if not args[0].isalpha():
-                        print("Country name must include only alphabetic characters")
-                        return
+                if self.case_is_correct:
+                    args = line.split()
 
-                    for i in range(1, 4):
-                        try:
-                            int(args[i])
-                        except ValueError:
-                            print("UNEXPECTED ARGUMENT VALUE '%s'" % args[i])
-                            return
+                    if self.line_is_correct(args):
+                        xl, yl, xh, yh = int(args[1]), int(args[2]), int(args[3]), int(args[4])
+                        country = Country(args[0], xl, yl, xh, yh)
+                        self.grid_length = max(self.grid_length, xl + 1, xh + 1)
+                        self.grid_height = max(self.grid_height, yl + 1, yh + 1)
+                        self.countries.append(country)
 
-                    country = Country(args[0], int(args[1]), int(args[2]), int(args[3]), int(args[4]))
-                    self.countries.append(country)
-                continue
+                if country_number == self.countries_amount:
+                    case_is_started = False
 
-            if self.cases_count > 0:
-                self.fill_grid()
-                for country in self.countries:
-                    if not self.is_connected(country):
-                        print('Case %d' % self.cases_count)
-                        print('COUNTRIES ARE NOT CONNECTED!')
-                        return
-                self.count_days()
-                self.print_results()
-                self.clear_variables()
+            else:
+                if self.cases_count > 0:
+                    if self.case_is_correct:
+                        self.fill_grid()
+                        if self.case_is_correct:
+                            self.count_days()
+                    self.print_results()
+                    self.clear_variables()
 
-            try:
-                country_number = 0
-                self.cases_count += 1
-                self.countries_amount = int(line)
+                try:
+                    country_number = 0
+                    self.cases_count += 1
+                    self.countries_amount = int(line)
+                    case_is_started = True
 
-            except ValueError:
-                print('UNEXPECTED VALUE')
-                return
+                except ValueError:
+                    self.errors.append({'case': self.cases_count, 'text': 'UNEXPECTED VALUE'})
+                    self.case_is_correct = False
+
+    def line_is_correct(self, args):
+        if len(args) != 5:
+            self.errors.append({'case': self.cases_count, 'text': 'ARGS AMOUNT ERROR'})
+            self.case_is_correct = False
+            return False
+        else:
+            if not args[0].isalpha():
+                self.errors.append({'case': self.cases_count,
+                                    'text': 'COUNTRY NAME MUST INCLUDE ONLY ALPHABETIC CHARACTERS'})
+                self.case_is_correct = False
+                return False
+
+            for i in range(1, 5):
+                try:
+                    if int(args[i]) < 0:
+                        self.errors.append({'case': self.cases_count, 'text': 'COORDINATE CANNOT BE NEGATIVE NUMBER'})
+                        self.case_is_correct = False
+                        return False
+                except ValueError:
+                    self.errors.append({'case': self.cases_count, 'text': 'UNEXPECTED ARGUMENT VALUE'})
+                    self.case_is_correct = False
+                    return False
+        return True
 
     def count_days(self):
         while not self.is_complete():
             self.days += 1
 
-            # print(self.days)
-            # self.print_grid()
-
-            for i in range(20):
-                for j in range(20):
+            for i in range(self.grid_length):
+                for j in range(self.grid_height):
                     current_city = self.grid[i][j]
 
                     if current_city != 0:
@@ -79,8 +94,12 @@ class EuroDiffusion:
             for country in self.countries:
                 country.apply_changes()
 
-        # print(self.days)
-        # self.print_grid()
+    def countries_are_connected(self):
+        for country in self.countries:
+            if not self.is_connected(country):
+                return False
+            else:
+                return True
 
     def get_neighbors(self, x, y):
         coords = [[-1, 0], [0, -1], [1, 0], [0, 1]]
@@ -97,6 +116,7 @@ class EuroDiffusion:
 
     def is_connected(self, country):
         coords = [[-1, 0], [0, -1], [1, 0], [0, 1]]
+
         for city in country.cities:
             for coord in coords:
                 try:
@@ -120,9 +140,6 @@ class EuroDiffusion:
             transport_coins['amount'] *= -1 * len(neighbors)
             current_city_coins.append(transport_coins)
 
-        for neighbor in neighbors:
-            self.transport_grid[neighbor.x][neighbor.y] = neighbors_coins
-
     def is_complete(self):
         result = True
         for country in self.countries:
@@ -131,24 +148,31 @@ class EuroDiffusion:
         return result
 
     def fill_grid(self):
-        for i in range(20):
+        for i in range(self.grid_length):
             cities = []
 
-            for j in range(20):
+            for j in range(self.grid_height):
                 cities.append(0)
             self.grid.append(cities)
-            self.transport_grid.append(cities)
 
         for country in self.countries:
             for city in country.cities:
-                if self.grid[city.y][city.x] == 0:
-                    self.grid[city.y][city.x] = city
+                if self.grid[city.x][city.y] == 0:
+                    self.grid[city.x][city.y] = city
                 else:
-                    print("ERROR! WRONG COORDINATES WERE PROVIDED")
+                    self.errors.append({'case': self.cases_count,
+                                        'text': 'MULTIPLE CITIES CAN NOT HAVE SAME COORDINATES'})
+                    self.case_is_correct = False
+                    return
+
+        if not self.countries_are_connected():
+            self.errors.append({'case': self.cases_count, 'text': 'COUNTRIES ARE NOT CONNECTED'})
+            self.case_is_correct = False
+
 
     def print_grid(self):
-        for i in range(20):
-            for j in range(20):
+        for i in range(self.grid_length):
+            for j in range(self.grid_height):
                 current_city = self.grid[i][j]
 
                 if current_city != 0:
@@ -156,24 +180,30 @@ class EuroDiffusion:
 
                     for coins in current_city.coins_table:
                         print(coins['country_name'], coins['amount'], end=' ')
-
                     print(')', end=' ')
+
             print()
 
     def clear_variables(self):
         self.grid = []
-        self.transport_grid = []
         self.countries = []
         self.countries_amount = 0
         self.days = 0
-        self.largest_x, self.largest_y = 0, 0
+        self.grid_length, self.grid_height = 0, 0
+        self.case_is_correct = True
 
     def print_results(self):
-        countries = sorted(self.countries, key=lambda country: country.complete_day)
         print('Case %d' % self.cases_count)
 
-        for country in countries:
-            print(country.name, country.complete_day)
+        if self.case_is_correct:
+            countries = sorted(self.countries, key=lambda country: country.complete_day)
+
+            for country in countries:
+                print(country.name, country.complete_day)
+        else:
+            for error in self.errors:
+                if error['case'] == self.cases_count:
+                    print('ERROR: %s' % error['text'])
 
         print()
 
