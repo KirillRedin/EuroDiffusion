@@ -88,8 +88,7 @@ class EuroDiffusion:
                     current_city = self.grid[i][j]
 
                     if current_city != 0:
-                        neighbors = self.get_neighbors(i, j)
-                        self.grid[i][j].transport_coins(neighbors)
+                        current_city.transport_coins()
 
             for country in self.countries:
                 country.apply_changes()
@@ -100,19 +99,6 @@ class EuroDiffusion:
                 return False
             else:
                 return True
-
-    def get_neighbors(self, x, y):
-        coords = [[-1, 0], [0, -1], [1, 0], [0, 1]]
-        neighbors = []
-
-        for coord in coords:
-            try:
-                if self.grid[x + coord[0]][y + coord[1]] != 0:
-                    neighbors.append(self.grid[x + coord[0]][y + coord[1]])
-            except IndexError:
-                continue
-
-        return neighbors
 
     def is_connected(self, country):
         coords = [[-1, 0], [0, -1], [1, 0], [0, 1]]
@@ -127,18 +113,6 @@ class EuroDiffusion:
                     continue
 
         return False
-
-    def transport_coins(self, current_city, neighbors):
-        neighbors_coins = []
-        current_city_coins = []
-
-        for coins in current_city.coins_table:
-
-            transport_coins = {'country_name': coins['country_name'], 'amount': int(coins['amount'] / 1000)}
-            neighbors_coins.append(transport_coins)
-
-            transport_coins['amount'] *= -1 * len(neighbors)
-            current_city_coins.append(transport_coins)
 
     def is_complete(self):
         result = True
@@ -165,24 +139,13 @@ class EuroDiffusion:
                     self.case_is_correct = False
                     return
 
+        for country in self.countries:
+            for city in country.cities:
+                city.fill_neighbors(self.grid)
+
         if not self.countries_are_connected():
             self.errors.append({'case': self.cases_count, 'text': 'COUNTRIES ARE NOT CONNECTED'})
             self.case_is_correct = False
-
-
-    def print_grid(self):
-        for i in range(self.grid_length):
-            for j in range(self.grid_height):
-                current_city = self.grid[i][j]
-
-                if current_city != 0:
-                    print('(', end=' ')
-
-                    for coins in current_city.coins_table:
-                        print(coins['country_name'], coins['amount'], end=' ')
-                    print(')', end=' ')
-
-            print()
 
     def clear_variables(self):
         self.grid = []
