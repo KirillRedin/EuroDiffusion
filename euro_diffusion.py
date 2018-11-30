@@ -146,6 +146,17 @@ class EuroDiffusion:
 
         return False
 
+    def countries_are_unique(self):
+        country_names = []
+
+        for country in self.countries:
+            if country.name not in country_names:
+                country_names.append(country.name)
+            else:
+                return False
+
+        return True
+
     def is_complete(self):
         result = True
 
@@ -156,6 +167,12 @@ class EuroDiffusion:
         return result
 
     def fill_grid(self):
+        # Check if all countries have different names
+        if not self.countries_are_unique():
+            self.errors.append({'case': self.cases_count, 'text': 'COUNTRIES MUST HAVE DIFFERENT NAMES'})
+            self.case_is_correct = False
+            return
+
         # Fill grid with 0
         for i in range(self.grid_length):
             cities = []
