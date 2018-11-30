@@ -17,9 +17,11 @@ class EuroDiffusion:
     def parse(self, name):
         file = open(name, 'r')
         country_number = 0
+        line_number = 0
         case_is_started = False
 
         for line in file:
+            line_number += 1
             # Skip whitespaces
             if not line.strip():
                 continue
@@ -32,7 +34,7 @@ class EuroDiffusion:
                     args = line.split()
 
                     # Check if current line has no mistakes
-                    if self.line_is_correct(args):
+                    if self.line_is_correct(args, line_number):
                         xl, yl, xh, yh = int(args[1]), int(args[2]), int(args[3]), int(args[4])
 
                         # Create country using line arguments
@@ -72,27 +74,32 @@ class EuroDiffusion:
 
                     # Get number of countries for next case
                     self.countries_amount = int(line)
+
+                    # Check if end of cases were found
+                    if self.countries_amount == 0:
+                        break
+
                     case_is_started = True
 
                 except ValueError:
-                    self.errors.append({'case': self.cases_count, 'text': 'UNEXPECTED VALUE'})
+                    self.errors.append({'case': self.cases_count, 'text': 'UNEXPECTED VALUE IN LINE %s' % line_number})
                     self.case_is_correct = False
 
-    def line_is_correct(self, args):
+    def line_is_correct(self, args, line_number):
         if len(args) != 5:
-            self.errors.append({'case': self.cases_count, 'text': 'ARGS AMOUNT ERROR'})
+            self.errors.append({'case': self.cases_count, 'text': 'ARGS AMOUNT ERROR IN LINE %s' % line_number})
             self.case_is_correct = False
             return False
         else:
             # Check if country name is correct
             if not args[0].isalpha():
                 self.errors.append({'case': self.cases_count,
-                                    'text': 'COUNTRY NAME MUST INCLUDE ONLY ALPHABETIC CHARACTERS'})
+                                    'text': 'COUNTRY NAME MUST INCLUDE ONLY ALPHABETIC CHARACTERS. LINE %s' % line_number})
                 self.case_is_correct = False
                 return False
             elif len(args[0]) > 25:
                 self.errors.append({'case': self.cases_count,
-                                    'text': 'COUNTRY NAME CAN NOT CONSIST MORE THAN 25 CHARACTERS'})
+                                    'text': 'COUNTRY NAME CAN NOT CONSIST MORE THAN 25 CHARACTERS. LINE %s' % line_number})
                 self.case_is_correct = False
                 return False
 
@@ -100,11 +107,12 @@ class EuroDiffusion:
             for i in range(1, 5):
                 try:
                     if int(args[i]) < 0:
-                        self.errors.append({'case': self.cases_count, 'text': 'COORDINATE CANNOT BE NEGATIVE NUMBER'})
+                        self.errors.append({'case': self.cases_count, 'text': 'COORDINATE CANNOT BE NEGATIVE NUMBER %s' % line_number})
                         self.case_is_correct = False
                         return False
+
                 except ValueError:
-                    self.errors.append({'case': self.cases_count, 'text': 'UNEXPECTED ARGUMENT VALUE'})
+                    self.errors.append({'case': self.cases_count, 'text': 'UNEXPECTED ARGUMENT VALUE %s' % line_number})
                     self.case_is_correct = False
                     return False
         return True
