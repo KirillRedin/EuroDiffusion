@@ -78,6 +78,8 @@ class EuroDiffusion:
                     # Check if end of cases were found
                     if self.countries_amount == 0:
                         break
+                    elif self.countries_amount < 0:
+                        raise ValueError
 
                     case_is_started = True
 
