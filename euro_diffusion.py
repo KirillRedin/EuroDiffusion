@@ -20,6 +20,9 @@ class EuroDiffusion:
         case_is_started = False
 
         for line in file:
+            # Skip whitespaces
+            if not line.strip():
+                continue
             # If new case is started we are reading line with country parameters
             if case_is_started:
                 country_number += 1
