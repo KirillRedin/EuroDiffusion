@@ -1,6 +1,4 @@
-import numpy
 from country import Country
-from city import City
 
 
 class EuroDiffusion:
@@ -12,6 +10,8 @@ class EuroDiffusion:
         self.countries_amount = 0
         self.days = 0
         self.case_is_correct = True
+
+        # Variables for dynamic grid creation
         self.grid_length, self.grid_height = 0, 0
 
     def parse(self, name):
@@ -20,34 +20,54 @@ class EuroDiffusion:
         case_is_started = False
 
         for line in file:
+            # If new case is started we are reading line with country parameters
             if case_is_started:
                 country_number += 1
 
+                # If current case has no Errors split current line, otherwise skip it until case is ended
                 if self.case_is_correct:
                     args = line.split()
 
+                    # Check if current line has no mistakes
                     if self.line_is_correct(args):
                         xl, yl, xh, yh = int(args[1]), int(args[2]), int(args[3]), int(args[4])
+
+                        # Create country using line arguments
                         country = Country(args[0], xl, yl, xh, yh)
+
+                        # Update values for grid size
                         self.grid_length = max(self.grid_length, xl + 1, xh + 1)
                         self.grid_height = max(self.grid_height, yl + 1, yh + 1)
+
                         self.countries.append(country)
 
+                # Check if we read given number of lines
                 if country_number == self.countries_amount:
+                    # End current case
                     case_is_started = False
 
             else:
+                # Check if we ended reading case or it's just the beginning of file
                 if self.cases_count > 0:
+
+                    # Check if last case have no Errors and put cities on grid
                     if self.case_is_correct:
                         self.fill_grid()
+
+                        # Check on Errors after filling and enter main counting loop
                         if self.case_is_correct:
                             self.count_days()
+
                     self.print_results()
+
+                    # Reset variables for next case
                     self.clear_variables()
 
                 try:
                     country_number = 0
                     self.cases_count += 1
+
+                    # Get number of countries for next case
                     self.countries_amount = int(line)
                     case_is_started = True
 
@@ -61,12 +81,19 @@ class EuroDiffusion:
             self.case_is_correct = False
             return False
         else:
+            # Check if country name is correct
             if not args[0].isalpha():
                 self.errors.append({'case': self.cases_count,
                                     'text': 'COUNTRY NAME MUST INCLUDE ONLY ALPHABETIC CHARACTERS'})
                 self.case_is_correct = False
                 return False
+            elif len(args[0]) > 25:
+                self.errors.append({'case': self.cases_count,
+                                    'text': 'COUNTRY NAME CAN NOT CONSIST MORE THAN 25 CHARACTERS'})
+                self.case_is_correct = False
+                return False
 
+            # Check if country coordinates are correct
             for i in range(1, 5):
                 try:
                     if int(args[i]) < 0:
@@ -80,6 +107,7 @@ class EuroDiffusion:
         return True
 
     def count_days(self):
+        # Check if all cities have all motifs
         while not self.is_complete():
             self.days += 1
 
@@ -88,20 +116,28 @@ class EuroDiffusion:
                     current_city = self.grid[i][j]
 
                     if current_city != 0:
-                        current_city.transport_coins()
+                        # For each city prepare coins for transportation
+                        current_city.prepare_coins()
 
             for country in self.countries:
-                country.apply_changes()
+                # Transport prepared coins
+                country.transport_coins()
 
     def countries_are_connected(self, country, country_list):
+        # List of countries which can be accessed
         country_list = country_list
+
+        # If current country already in this list, back to higher level, otherwise add country to list
         if country in country_list:
             return
-        country_list.append(country)
+        else:
+            country_list.append(country)
 
         for neighbor in country.neighbors:
+            # For country neighbors recursive call to get their neighbors
             self.countries_are_connected(neighbor, country_list)
 
+        # Check if all countries can be accessed
         if len(country_list) == len(self.countries):
             return True
 
@@ -109,21 +145,24 @@ class EuroDiffusion:
 
     def is_complete(self):
         result = True
+
         for country in self.countries:
+            # If at least one country is not complete result always will be False cause F && T == F and T && F == F
             result = country.is_complete(self.countries_amount, self.days) and result
 
         return result
 
     def fill_grid(self):
+        # Fill grid with 0
         for i in range(self.grid_length):
             cities = []
-
             for j in range(self.grid_height):
                 cities.append(0)
             self.grid.append(cities)
 
         for country in self.countries:
             for city in country.cities:
+                # Check if current cell is not occupied by another city
                 if self.grid[city.x][city.y] == 0:
                     self.grid[city.x][city.y] = city
                 else:
@@ -132,11 +171,11 @@ class EuroDiffusion:
                     self.case_is_correct = False
                     return
 
+        # Filling country and city neighbors
         for country in self.countries:
             country.fill_neighbors(self.grid, self.countries)
-            for city in country.cities:
-                city.fill_neighbors(self.grid)
 
+        # Check if all countries are connected
         if not self.countries_are_connected(self.countries[0], []):
             self.errors.append({'case': self.cases_count, 'text': 'COUNTRIES ARE NOT CONNECTED'})
             self.case_is_correct = False
@@ -153,6 +192,7 @@ class EuroDiffusion:
         print('Case %d' % self.cases_count)
 
         if self.case_is_correct:
+            # Sort results by day when country became complete
             countries = sorted(self.countries, key=lambda country: country.complete_day)
 
             for country in countries:
