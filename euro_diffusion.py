@@ -222,8 +222,8 @@ class EuroDiffusion:
         print('Case %d' % self.cases_count)
 
         if self.case_is_correct:
-            # Sort results by day when country became complete
-            countries = sorted(self.countries, key=lambda country: country.complete_day)
+            # Sort results by day and name when country became complete
+            countries = sorted(self.countries, key=lambda country: (country.complete_day, country.name))
 
             for country in countries:
                 print(country.name, country.complete_day)
