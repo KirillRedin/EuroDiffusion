@@ -2,19 +2,22 @@ import copy
 
 
 class City:
+    INITIAL_COINS_AMOUNT = 1000000
+    MINIMAL_COINS_AMOUNT = 1000
+
     def __init__(self, x, y, country_name):
         self.country_name = country_name
         self.x = x
         self.y = y
         self.neighbors = []
-        self.coins_table = [{'country_name': country_name, 'amount': 1000000}]
+        self.coins_table = [{'country_name': country_name, 'amount': self.INITIAL_COINS_AMOUNT}]
         self.temp_table = [{'country_name': country_name, 'amount': 0}]
 
     def prepare_coins(self):
         for i in range(len(self.coins_table)):
-            if self.coins_table[i]['amount'] >= 1000:
+            if self.coins_table[i]['amount'] >= self.MINIMAL_COINS_AMOUNT:
                 # For each coin in country which amount >= 1000 get the portion to transport
-                portion = self.coins_table[i]['amount'] // 1000
+                portion = self.coins_table[i]['amount'] // self.MINIMAL_COINS_AMOUNT
 
                 for neighbor in self.neighbors:
                     # Prepare portion of coins to every neighbor
